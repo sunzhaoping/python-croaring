@@ -5,7 +5,7 @@ please visit: https://github.com/RoaringBitmap/CRoaring
 
 # INSTALL:
 ```
-pip install https://github.com/sunzhaoping/python-croaring.git
+pip install git+https://github.com/sunzhaoping/python-croaring.git
 ```
 or
 ```
