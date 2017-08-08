@@ -30,5 +30,8 @@ len(s)
 other =  Set([1,2,3,4,5,6])
 other in s
 
+# iterate it
+[ element for element in s]
+
 ```
 
