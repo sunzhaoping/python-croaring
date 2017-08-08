@@ -14,8 +14,15 @@ pypy setup.py build && pypy setup.py install
 
 # Demo:
 ```python
+# import the croaring module
 from croaring import Set
+
+# create a set like bitmap
 s = Set([1,2,3,4,5,6,7])
+
+# count the elements
 len(s)
+
+#
 ```
 
