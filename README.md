@@ -13,7 +13,7 @@ pypy setup.py build && pypy setup.py install
 ```
 
 # Demo:
-```
+```python
 from croaring import Set
 s = Set([1,2,3,4,5,6,7])
 len(s)
