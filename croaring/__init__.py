@@ -107,7 +107,10 @@ ffi.verifier._compile_module = _compile_module
 lib = LazyLibrary(ffi)
 
 class Set(collections.Set):
-    def __init__(self, iterable=(), croaring = None):
+    def __init__(self, iterable=(), croaring = None, buffer = None):
+        if buffer:
+            inbuf = ffi.new('char[%d]'%(len(buffer)), buffer)
+            croaring = lib.roaring_bitmap_deserialize(inbuf)
         self._croaring = croaring or lib.roaring_bitmap_create()
         if iterable:
             for item in iterable:
