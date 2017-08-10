@@ -68,8 +68,9 @@ roaring_bitmap_t *roaring_bitmap_or_many(uint32_t number,const roaring_bitmap_t 
 bool roaring_bitmap_run_optimize(roaring_bitmap_t *r);
 size_t roaring_bitmap_shrink_to_fit(roaring_bitmap_t *r);
 roaring_bitmap_t *roaring_bitmap_deserialize(const void *buf);
+bool roaring_bitmap_is_empty(const roaring_bitmap_t *ra)
 size_t roaring_bitmap_serialize(const roaring_bitmap_t *ra, char *buf);
-size_t roaring_bitmap_portable_size_in_bytes(const roaring_bitmap_t *ra);
+size_t roaring_bitmap_size_in_bytes(const roaring_bitmap_t *ra);
 bool roaring_bitmap_equals(const roaring_bitmap_t *ra1, const roaring_bitmap_t *ra2);
 bool roaring_bitmap_is_subset(const roaring_bitmap_t *ra1, const roaring_bitmap_t *ra2);
 uint64_t roaring_bitmap_rank(const roaring_bitmap_t *bm, uint32_t x);
@@ -189,6 +190,12 @@ class Set(collections.Set):
         _croaring =  lib.roaring_bitmap_copy(self._croaring)
         return Roaring(croaring = _croaring)
 
+    def __getstate__(self):
+        return self.dumps()[:]
+
+    def __setstate__(self, value):
+        self.loads(value)
+
     @classmethod
     def union(cls, *bitmaps):
         _croaring =  lib.roaring_bitmap_or_many(len(bitmaps),  [b._croaring for b in bitmaps])
@@ -237,6 +244,18 @@ class Set(collections.Set):
 
     def maximum(self):
         return lib.roaring_bitmap_minimum(self._croaring)
+
+    def bytes_size(self):
+        return lib.roaring_bitmap_size_in_bytes(self._croaring)
+
+    def run_optimize(self):
+        return lib.roaring_bitmap_run_optimize(self._croaring)
+
+    def is_empty(self):
+        return lib.roaring_bitmap_is_empty(self._croaring)
+
+    def shrink(self):
+        return lib.roaring_bitmap_shrink_to_fit(self._croaring)
 
     def intersect(self, ohter):
         return lib.roaring_bitmap_intersect(self._croaring, other._croaring)
