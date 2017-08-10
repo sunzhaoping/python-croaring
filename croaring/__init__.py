@@ -192,7 +192,7 @@ class BitSet(collections.Set):
 
     def __setstate__(self, value):
         inbuf = ffi.new('char[%d]'%(len(value)), value)
-        self_croaring = lib.roaring_bitmap_deserialize(inbuf)
+        self._croaring = lib.roaring_bitmap_deserialize(inbuf)
 
     @classmethod
     def union(cls, *bitmaps):
