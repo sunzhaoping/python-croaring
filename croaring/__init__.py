@@ -191,7 +191,7 @@ class BitSet(collections.Set):
         return self.dumps()
 
     def __setstate__(self, value):
-        inbuf = ffi.new('char[%d]'%(len(buf)), value)
+        inbuf = ffi.new('char[%d]'%(len(value)), value)
         self_croaring = lib.roaring_bitmap_deserialize(inbuf)
 
     @classmethod
