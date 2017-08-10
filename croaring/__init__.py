@@ -108,10 +108,7 @@ ffi.verifier._compile_module = _compile_module
 lib = LazyLibrary(ffi)
 
 class BitSet(collections.Set):
-    def __init__(self, iterable=(), croaring = None, buffer = None):
-        if buffer:
-            inbuf = ffi.new('char[%d]'%(len(buffer)), buffer)
-            croaring = lib.roaring_bitmap_deserialize(inbuf)
+    def __init__(self, iterable=(), croaring=None):
         self._croaring = croaring or lib.roaring_bitmap_create()
         if iterable:
             for item in iterable:
@@ -175,7 +172,7 @@ class BitSet(collections.Set):
         if lib.roaring_bitmap_select(self._croaring, ffi.cast("uint32_t", index), out):
             return out[0]
         else:
-            return None
+            raise IndexError("bitset index out of range")
 
     def __len__(self):
         return lib.roaring_bitmap_get_cardinality(self._croaring)
@@ -224,7 +221,7 @@ class BitSet(collections.Set):
         try:
             lib.roaring_bitmap_remove(self._croaring, ffi.cast("uint32_t", value))
         except:
-            raise KeyError(value)
+            raise ValueError("Bitset.remove(): %s is not in bitset" % (value))
 
     def dumps(self):
         buf_size = lib.roaring_bitmap_portable_size_in_bytes(self._croaring)
@@ -234,10 +231,11 @@ class BitSet(collections.Set):
             return None
         return ffi.buffer(out)[:size]
 
-    def loads(self, buf):
+    @classmethod
+    def loads(cls, buf):
         inbuf = ffi.new('char[%d]'%(len(buf)), buf)
-        self._croaring = lib.roaring_bitmap_deserialize(inbuf)
-        return self
+        _croaring = lib.roaring_bitmap_deserialize(inbuf)
+        return cls(croaring = _croaring)
 
     def minimum(self):
         return lib.roaring_bitmap_minimum(self._croaring)
