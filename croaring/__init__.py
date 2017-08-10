@@ -107,7 +107,7 @@ ffi.verifier._compile_module = _compile_module
 
 lib = LazyLibrary(ffi)
 
-class Set(collections.Set):
+class BitSet(collections.Set):
     def __init__(self, iterable=(), croaring = None, buffer = None):
         if buffer:
             inbuf = ffi.new('char[%d]'%(len(buffer)), buffer)
