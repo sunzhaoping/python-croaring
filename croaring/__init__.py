@@ -68,7 +68,7 @@ roaring_bitmap_t *roaring_bitmap_or_many(uint32_t number,const roaring_bitmap_t 
 bool roaring_bitmap_run_optimize(roaring_bitmap_t *r);
 size_t roaring_bitmap_shrink_to_fit(roaring_bitmap_t *r);
 roaring_bitmap_t *roaring_bitmap_deserialize(const void *buf);
-bool roaring_bitmap_is_empty(const roaring_bitmap_t *ra)
+bool roaring_bitmap_is_empty(const roaring_bitmap_t *ra);
 size_t roaring_bitmap_serialize(const roaring_bitmap_t *ra, char *buf);
 size_t roaring_bitmap_size_in_bytes(const roaring_bitmap_t *ra);
 bool roaring_bitmap_equals(const roaring_bitmap_t *ra1, const roaring_bitmap_t *ra2);
