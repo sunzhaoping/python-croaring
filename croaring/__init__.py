@@ -224,7 +224,7 @@ class BitSet(collections.Set):
             raise ValueError("Bitset.remove(): %s is not in bitset" % (value))
 
     def dumps(self):
-        buf_size = lib.roaring_bitmap_portable_size_in_bytes(self._croaring)
+        buf_size = lib.roaring_bitmap_size_in_bytes(self._croaring)
         out = ffi.new('char[%d]' % (buf_size))
         size = lib.roaring_bitmap_serialize(self._croaring, out)
         if size < 0:
