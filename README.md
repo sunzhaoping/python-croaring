@@ -65,7 +65,7 @@ s.remove(8)
 s.discard(8)
 
 #union many sets
-new = Set.union(s, other)
-new = Set.union_heap(s, other)
+new = BitSet.union(s, other)
+new = BitSet.union_heap(s, other)
 ```
 
