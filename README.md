@@ -16,10 +16,10 @@ pypy setup.py build && pypy setup.py install
 # Demo:
 ```python
 # import the croaring module
-from croaring import Set
+from croaring import BitSet
 
 # create a bitmap like set
-s = Set([1,2,3,4,5,6,7])
+s = BitSet([1,2,3,4,5,6,7])
 
 # count the elements
 len(s)
@@ -28,7 +28,7 @@ len(s)
 1 in s
 
 # if another set in current set
-other =  Set([1,2,3,4,5,6])
+other =  BitSet([1,2,3,4,5,6])
 other in s
 
 # iterate it
