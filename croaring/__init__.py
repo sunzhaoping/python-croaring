@@ -277,7 +277,7 @@ def load_from_s3(file_name):
     try:
         import s3fs
         s3 = s3fs.S3FileSystem(anon=False)
-        result = BitSet.loads(s3.cat(filename))
+        result = BitSet.loads(s3.cat(file_name))
     except Exception as e:
         import logging
         logging.error(str(e))
