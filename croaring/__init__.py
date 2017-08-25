@@ -282,7 +282,7 @@ def load_from_s3(file_name):
     return result
 
 def calculate_len(bitset, filetype=""):
-    if isinstance(bitmap, BitSet):
+    if isinstance(bitset, BitSet):
         bs = bitset
     elif filetype == "s3":
         bs= load_from_s3(bitset)
