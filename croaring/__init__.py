@@ -299,27 +299,27 @@ def calculate_len(bitset, filetype=""):
     bs = validate_bitset(bitset, filetype)
     return len(bs)
         
-def calculate_and(bitset1, filetype1="", bitset2, filetype2=""):
+def calculate_and(bitset1, bitset2, filetype1="", filetype2=""):
     bs1 = validate_bitset(bitset1, filetype1)
     bs2 = validate_bitset(bitset2, filetype2)
     return bs1 & bs2
 
-def calculate_or(bitset1, filetype1="", bitset2, filetype2=""):
+def calculate_or(bitset1, bitset2, filetype1="", filetype2=""):
     bs1 = validate_bitset(bitset1, filetype1)
     bs2 = validate_bitset(bitset2, filetype2)
     return bs1 | bs2
 
-def calculate_xor(bitset1, filetype1="", bitset2, filetype2=""):
+def calculate_xor(bitset1, bitset2, filetype1="", filetype2=""):
     bs1 = validate_bitset(bitset1, filetype1)
     bs2 = validate_bitset(bitset2, filetype2)
     return bs1 ^ bs2
 
-def calculate_sub(bitset1, filetype1="", bitset2, filetype2=""):
+def calculate_sub(bitset1, bitset2, filetype1="", filetype2=""):
     bs1 = validate_bitset(bitset1, filetype1)
     bs2 = validate_bitset(bitset2, filetype2)
     return bs1 - bs2
 
-def calculate_add(bitset1, filetype1="", bitset2, filetype2=""):
+def calculate_add(bitset1, bitset2, filetype1="", filetype2=""):
     bs1 = validate_bitset(bitset1, filetype1)
     bs2 = validate_bitset(bitset2, filetype2)
     return bs1 + bs2
