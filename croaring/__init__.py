@@ -261,3 +261,31 @@ class BitSet(collections.Set):
 
     def index(self, value):
         return lib.roaring_bitmap_rank(self._croaring, ffi.cast("uint32_t", value))
+
+def load_from_file(file_name):
+    result = None
+    try:
+        with open(file_name, 'fb') as f:
+            result = BitSet.loads(f.read())
+    except:
+        pass
+    return result
+
+def load_from_s3(file_name):
+    result = None
+    try:
+        import s3fs
+        s3 = s3fs.S3FileSystem(anon=False)
+        result = BitSet.loads(s3.cat(filename))
+    except:
+        pass
+    return result
+
+def caculate_len(bitset, filetype=""):
+    if isinstance(bitmap, BitSet):
+        bs = bitset
+    elif filetype == "s3":
+        bs= load_from_s3(bitset)
+    else:
+        bs = load_from_file(bitset)
+    return len(bs) if bs else 0
