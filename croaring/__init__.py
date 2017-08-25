@@ -100,7 +100,7 @@ ffi.verifier = Verifier(ffi,
                         SOURCE ,
                         include_dirs=[include_dir],
                         modulename=_create_modulename(CDEF, SOURCE, sys.version),
-                        extra_compile_args=['-std=c99','-msse4.2'])
+                        extra_compile_args=['-march=native','-std=c99','-O3'])
 
 ffi.verifier.compile_module = _compile_module
 ffi.verifier._compile_module = _compile_module

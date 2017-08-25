@@ -1,4 +1,4 @@
-/* auto-generated on 2017年 8月 8日 星期二 14时35分03秒 JST. Do not edit! */
+/* auto-generated on 2017年 8月25日 星期五 12时38分46秒 JST. Do not edit! */
 #include "roaring.h"
 /* begin file src/array_util.c */
 #include <assert.h>
@@ -1767,7 +1767,8 @@ static uint8_t lengthTable[256] = {
 #endif
 
 #ifdef USEAVX
-static uint32_t vecDecodeTable[256][8] ALIGNED(32) = {
+ALIGNED(32)
+static uint32_t vecDecodeTable[256][8] = {
     {0, 0, 0, 0, 0, 0, 0, 0}, /* 0x00 (00000000) */
     {1, 0, 0, 0, 0, 0, 0, 0}, /* 0x01 (00000001) */
     {2, 0, 0, 0, 0, 0, 0, 0}, /* 0x02 (00000010) */
