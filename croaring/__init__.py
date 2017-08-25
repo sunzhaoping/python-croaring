@@ -33,7 +33,8 @@ class LazyLibrary(object):
     def __init__(self, ffi):
         self._ffi = ffi
         self._lib = None
-        self._lock = threading.Lock()
+        self._lock = 
+        .Lock()
 
     def __getattr__(self, name):
         if self._lib is None:
@@ -267,8 +268,9 @@ def load_from_file(file_name):
     try:
         with open(file_name, 'fb') as f:
             result = BitSet.loads(f.read())
-    except:
-        pass
+    except Exception as e:
+        import logging
+        logging.error(str(e))
     return result
 
 def load_from_s3(file_name):
@@ -277,8 +279,9 @@ def load_from_s3(file_name):
         import s3fs
         s3 = s3fs.S3FileSystem(anon=False)
         result = BitSet.loads(s3.cat(filename))
-    except:
-        pass
+    except Exception as e:
+        import logging
+        logging.error(str(e))
     return result
 
 def calculate_len(bitset, filetype=""):
