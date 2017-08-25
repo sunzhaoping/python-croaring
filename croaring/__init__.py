@@ -115,7 +115,7 @@ class BitSet(collections.Set):
                 self.add(item)
 
     def __contains__(self, value):
-        if isinstance(value, Roaring):
+        if isinstance(value, BitSet):
             return lib.roaring_bitmap_is_subset(value._croaring, self._croaring)
         return lib.roaring_bitmap_contains(self._croaring, ffi.cast("uint32_t", value))
 
@@ -128,7 +128,7 @@ class BitSet(collections.Set):
 
     def __and__(self, other):
         _croaring =  lib.roaring_bitmap_and(self._croaring,  other._croaring)
-        return Roaring(croaring = _croaring)
+        return BitSet(croaring = _croaring)
 
     def __iand__(self, other):
         lib.roaring_bitmap_and_inplace(self._croaring,  other._croaring)
@@ -136,7 +136,7 @@ class BitSet(collections.Set):
 
     def __or__(self, other):
         _croaring =  lib.roaring_bitmap_or(self._croaring,  other._croaring)
-        return Roaring(croaring = _croaring)
+        return BitSet(croaring = _croaring)
 
     def __ior__(self, other):
         lib.roaring_bitmap_or_inplace(self._croaring,  other._croaring)
@@ -144,7 +144,7 @@ class BitSet(collections.Set):
 
     def __xor__(self, other):
         _croaring =  lib.roaring_bitmap_xor(self._croaring,  other._croaring)
-        return Roaring(croaring = _croaring)
+        return BitSet(croaring = _croaring)
 
     def __ixor__(self, other):
         lib.roaring_bitmap_xor_inplace(self._croaring,  other._croaring)
@@ -152,7 +152,7 @@ class BitSet(collections.Set):
 
     def __sub__(self, other):
         _croaring =  lib.roaring_bitmap_andnot(self._croaring,  other._croaring)
-        return Roaring(croaring = _croaring)
+        return BitSet(croaring = _croaring)
 
     def __isub__(self, other):
         lib.roaring_bitmap_andnot_inplace(self._croaring,  other._croaring)
@@ -185,7 +185,7 @@ class BitSet(collections.Set):
 
     def copy(self):
         _croaring =  lib.roaring_bitmap_copy(self._croaring)
-        return Roaring(croaring = _croaring)
+        return BitSet(croaring = _croaring)
 
     def __getstate__(self):
         return self.dumps()
@@ -197,12 +197,12 @@ class BitSet(collections.Set):
     @classmethod
     def union(cls, *bitmaps):
         _croaring =  lib.roaring_bitmap_or_many(len(bitmaps),  [b._croaring for b in bitmaps])
-        return Roaring(croaring = _croaring)
+        return BitSet(croaring = _croaring)
 
     @classmethod
     def union_heap(cls, *bitmaps):
         _croaring =  lib.roaring_bitmap_or_many_heap(len(bitmaps),  [b._croaring for b in bitmaps])
-        return Roaring(croaring = _croaring)
+        return BitSet(croaring = _croaring)
 
     def add(self, value):
         lib.roaring_bitmap_add(self._croaring, ffi.cast("uint32_t", value))
@@ -283,11 +283,43 @@ def load_from_s3(file_name):
         logging.error(str(e))
     return result
 
-def calculate_len(bitset, filetype=""):
+def validate_bitset(bitset, filetype)
     if isinstance(bitset, BitSet):
         bs = bitset
     elif filetype == "s3":
         bs= load_from_s3(bitset)
     else:
         bs = load_from_file(bitset)
-    return len(bs) if bs else 0
+        
+    if not bs:
+        bs = BitSet()
+    return bs
+        
+def calculate_len(bitset, filetype=""):
+    bs = validate_bitset(bitset, filetype)
+    return len(bs)
+        
+def calculate_and(bitset1, filetype1="", bitset2, filetype2=""):
+    bs1 = validate_bitset(bitset1, filetype1)
+    bs2 = validate_bitset(bitset2, filetype2)
+    return bs1 & bs2
+
+def calculate_or(bitset1, filetype1="", bitset2, filetype2=""):
+    bs1 = validate_bitset(bitset1, filetype1)
+    bs2 = validate_bitset(bitset2, filetype2)
+    return bs1 | bs2
+
+def calculate_xor(bitset1, filetype1="", bitset2, filetype2=""):
+    bs1 = validate_bitset(bitset1, filetype1)
+    bs2 = validate_bitset(bitset2, filetype2)
+    return bs1 ^ bs2
+
+def calculate_sub(bitset1, filetype1="", bitset2, filetype2=""):
+    bs1 = validate_bitset(bitset1, filetype1)
+    bs2 = validate_bitset(bitset2, filetype2)
+    return bs1 - bs2
+
+def calculate_add(bitset1, filetype1="", bitset2, filetype2=""):
+    bs1 = validate_bitset(bitset1, filetype1)
+    bs2 = validate_bitset(bitset2, filetype2)
+    return bs1 + bs2
