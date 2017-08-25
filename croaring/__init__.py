@@ -283,7 +283,7 @@ def load_from_s3(file_name):
         logging.error(str(e))
     return result
 
-def validate_bitset(bitset, filetype)
+def validate_bitset(bitset, filetype):
     if isinstance(bitset, BitSet):
         bs = bitset
     elif filetype == "s3":
