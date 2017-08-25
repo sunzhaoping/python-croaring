@@ -33,8 +33,7 @@ class LazyLibrary(object):
     def __init__(self, ffi):
         self._ffi = ffi
         self._lib = None
-        self._lock = 
-        .Lock()
+        self._lock = threading.Lock()
 
     def __getattr__(self, name):
         if self._lib is None:
