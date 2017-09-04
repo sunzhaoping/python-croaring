@@ -112,6 +112,7 @@ uint32_t iterator_current_value(const roaring_uint32_iterator_t *it);
 void roaring_bitmap_clear(roaring_bitmap_t *ra);
 void roaring_bitmap_to_uint32_array(const roaring_bitmap_t *ra, uint32_t *ans);
 roaring_bitmap_t *roaring_bitmap_and_many(size_t number, const roaring_bitmap_t **x);
+double roaring_bitmap_jaccard_index(const roaring_bitmap_t *x1, const roaring_bitmap_t *x2);
 """
 
 SOURCE = """
@@ -201,7 +202,7 @@ class BitSet(collections.Set):
 
     def __repr__(self):
         return str(self)
-    
+
     def __str__(self):
         values = ', '.join([str(n) for n in self])
         return 'BitSet([%s])' % values
@@ -283,7 +284,7 @@ class BitSet(collections.Set):
             return out[0]
         else:
             raise IndexError("BitSet index out of range")
-    
+
     def _get_slice(self, sl):
         start, stop, step = sl.indices(len(self))
         sign = 1 if step > 0 else -1
@@ -297,7 +298,7 @@ class BitSet(collections.Set):
             result &= self
             return result
         else:
-            return self.__class__(list(self)[sl])    
+            return self.__class__(list(self)[sl])
 
     def __getitem__(self, index):
         if isinstance(index, int):
@@ -305,7 +306,7 @@ class BitSet(collections.Set):
         elif isinstance(index, slice):
             return self._get_slice(index)
         else:
-            return TypeError('Indices must be integers or slices, not %s' % type(index)) 
+            return TypeError('Indices must be integers or slices, not %s' % type(index))
 
     def __richcmp__(self, other, op):
         if op == 0: # <
@@ -321,13 +322,13 @@ class BitSet(collections.Set):
         else:         # >=
             assert op == 5
             return bool(lib.roaring_bitmap_is_subset(self._croaring, other._croaring))
- 
+
     def __len__(self):
         return lib.roaring_bitmap_get_cardinality(self._croaring)
 
     def __eq__(self, other):
         return bool(lib.roaring_bitmap_equals(self._croaring, other._croaring))
-    
+
     def __lt__(self, other):
         return bool(lib.roaring_bitmap_is_strict_subset(self._croaring, other._croaring))
 
@@ -392,7 +393,11 @@ class BitSet(collections.Set):
         else:
             _croaring = lib.roaring_bitmap_and_many(len(bitsets), [b._croaring for b in bitsets])
             return cls(croaring = _croaring)
-    
+
+    @classmethod
+    def jaccard_index(cls, bitseta, bitsetb):
+        return lib.roaring_bitmap_jaccard_index(bitseta._croaring, bitsetb._croaring)
+
     def union_cardinality(self, other):
         return lib.roaring_bitmap_or_cardinality(self._croaring, other._croaring)
 
@@ -471,7 +476,7 @@ class BitSet(collections.Set):
 
     def to_array(self):
         size = len(self)
-        out = ffi.new('uint32_t[%d]' % (size)) 
+        out = ffi.new('uint32_t[%d]' % (size))
         lib.roaring_bitmap_to_uint32_array(self._croaring, out)
         ar = array.array('I', out)
         return ar
@@ -504,15 +509,15 @@ def validate_bitset(bitset, filetype):
         bs= load_from_s3(bitset)
     else:
         bs = load_from_file(bitset)
-        
+
     if not bs:
         bs = BitSet()
     return bs
-        
+
 def calculate_len(bitset, filetype=""):
     bs = validate_bitset(bitset, filetype)
     return len(bs)
-        
+
 def calculate_and(bitset1, bitset2, filetype1="", filetype2=""):
     bs1 = validate_bitset(bitset1, filetype1)
     bs2 = validate_bitset(bitset2, filetype2)
