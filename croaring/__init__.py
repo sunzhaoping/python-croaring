@@ -207,12 +207,12 @@ class BitSet(collections.Set):
         return 'BitSet([%s])' % values
 
     def __bool__(self):
-        return not lib.roaring_bitmap_is_empty(self._croaring)
+        return not bool(lib.roaring_bitmap_is_empty(self._croaring))
 
     def __contains__(self, value):
         if isinstance(value, BitSet):
-            return lib.roaring_bitmap_is_subset(value._croaring, self._croaring)
-        return lib.roaring_bitmap_contains(self._croaring, ffi.cast("uint32_t", value))
+            return bool(lib.roaring_bitmap_is_subset(value._croaring, self._croaring))
+        return bool(lib.roaring_bitmap_contains(self._croaring, ffi.cast("uint32_t", value)))
 
     def __iter__(self):
         iter = lib.roaring_create_iterator(self._croaring)
@@ -307,35 +307,35 @@ class BitSet(collections.Set):
         else:
             return TypeError('Indices must be integers or slices, not %s' % type(index)) 
 
-    def __richcmp__(self, other, int op):
+    def __richcmp__(self, other, op):
         if op == 0: # <
-            return lib.roaring_bitmap_is_strict_subset(self._croaring, other._croaring)
+            return bool(lib.roaring_bitmap_is_strict_subset(self._croaring, other._croaring))
         elif op == 1: # <=
-            return lib.roaring_bitmap_is_subset(self._croaring, other._croaring)
+            return bool(lib.roaring_bitmap_is_subset(self._croaring, other._croaring))
         elif op == 2: # ==
-            return lib.roaring_bitmap_equals(self._croaring, other._croaring)
+            return bool(lib.roaring_bitmap_equals(self._croaring, other._croaring))
         elif op == 3: # !=
             return not (self == other)
         elif op == 4: # >
-            return lib.roaring_bitmap_is_strict_subset(self._croaring, other._croaring)
+            return bool(lib.roaring_bitmap_is_strict_subset(self._croaring, other._croaring))
         else:         # >=
             assert op == 5
-            return lib.roaring_bitmap_is_subset(self._croaring, other._croaring)
+            return bool(lib.roaring_bitmap_is_subset(self._croaring, other._croaring))
  
     def __len__(self):
         return lib.roaring_bitmap_get_cardinality(self._croaring)
 
     def __eq__(self, other):
-        return len(lib.roaring_bitmap_equals(self._croaring, other._croaring))
+        return bool(lib.roaring_bitmap_equals(self._croaring, other._croaring))
     
     def __lt__(self, other):
-        return lib.roaring_bitmap_is_strict_subset(self._croaring, other._croaring)
+        return bool(lib.roaring_bitmap_is_strict_subset(self._croaring, other._croaring))
 
     def __gt__(self, other):
         return other < self
 
     def __le__(self, other):
-        return lib.roaring_bitmap_is_subset(self._croaring, other._croaring)
+        return bool(lib.roaring_bitmap_is_subset(self._croaring, other._croaring))
 
     def __ge__(self, other):
         return other <= self
@@ -458,13 +458,13 @@ class BitSet(collections.Set):
         return lib.roaring_bitmap_run_optimize(self._croaring)
 
     def is_empty(self):
-        return lib.roaring_bitmap_is_empty(self._croaring)
+        return bool(lib.roaring_bitmap_is_empty(self._croaring))
 
     def shrink(self):
         return lib.roaring_bitmap_shrink_to_fit(self._croaring)
 
     def intersect(self, ohter):
-        return lib.roaring_bitmap_intersect(self._croaring, other._croaring)
+        return bool(lib.roaring_bitmap_intersect(self._croaring, other._croaring))
 
     def index(self, value):
         return lib.roaring_bitmap_rank(self._croaring, ffi.cast("uint32_t", value))
