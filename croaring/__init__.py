@@ -6,8 +6,10 @@ import binascii
 import threading
 import collections
 import array
+
 from cffi import FFI
 from cffi.verifier import Verifier
+
 PY3 = sys.version_info >= (3,)
 if PY3:
     xrange = range
@@ -61,9 +63,36 @@ typedef struct roaring_bitmap_s {
     bool copy_on_write;
 } roaring_bitmap_t;
 
-typedef bool (*roaring_iterator)(uint32_t value, void *param);
-typedef bool (*roaring_iterator64)(uint64_t value, void *param);
-typedef struct roaring_uint32_iterator_s roaring_uint32_iterator_t;
+typedef struct roaring_uint32_iterator_s {
+    const roaring_bitmap_t *parent;
+    int32_t container_index;
+    int32_t in_container_index;
+    int32_t run_index;
+    uint32_t in_run_index;
+    uint32_t current_value;
+    bool has_value;
+    const void *container;
+    uint8_t typecode;
+    uint32_t highbits;
+} roaring_uint32_iterator_t;
+
+typedef struct roaring_statistics_s {
+    uint32_t n_containers;
+    uint32_t n_array_containers;
+    uint32_t n_run_containers;
+    uint32_t n_bitset_containers;
+    uint32_t n_values_array_containers;
+    uint32_t n_values_run_containers;
+    uint32_t n_values_bitset_containers;
+    uint32_t n_bytes_array_containers;
+    uint32_t n_bytes_run_containers;
+    uint32_t n_bytes_bitset_containers;
+    uint32_t max_value;
+    uint32_t min_value;
+    uint64_t sum_value;
+    uint64_t cardinality;
+} roaring_statistics_t;
+
 roaring_bitmap_t *roaring_bitmap_create();
 roaring_bitmap_t *roaring_bitmap_from_range(uint32_t min, uint32_t max,uint32_t step);
 roaring_bitmap_t *roaring_bitmap_create_with_capacity(uint32_t cap);
@@ -107,12 +136,14 @@ bool roaring_bitmap_is_strict_subset(const roaring_bitmap_t *ra1,const roaring_b
 roaring_uint32_iterator_t *roaring_create_iterator(const roaring_bitmap_t *ra);
 bool roaring_advance_uint32_iterator(roaring_uint32_iterator_t *it);
 void roaring_free_uint32_iterator(roaring_uint32_iterator_t *it);
-bool iterator_has_value(const roaring_uint32_iterator_t *it);
-uint32_t iterator_current_value(const roaring_uint32_iterator_t *it);
 void roaring_bitmap_clear(roaring_bitmap_t *ra);
 void roaring_bitmap_to_uint32_array(const roaring_bitmap_t *ra, uint32_t *ans);
-roaring_bitmap_t *roaring_bitmap_and_many(size_t number, const roaring_bitmap_t **x);
 double roaring_bitmap_jaccard_index(const roaring_bitmap_t *x1, const roaring_bitmap_t *x2);
+void roaring_bitmap_statistics(const roaring_bitmap_t *ra, roaring_statistics_t *stat);
+roaring_bitmap_t *roaring_bitmap_and_many(size_t number, const roaring_bitmap_t **x);
+bool croaring_get_elt(const roaring_bitmap_t *ra, int64_t index, uint32_t *ans);
+roaring_bitmap_t *croaring_union(const roaring_bitmap_t **x, size_t size , bool using_heap);
+roaring_bitmap_t *croaring_get_slice(const roaring_bitmap_t*x, int sign , int64_t start, int64_t stop, int step);
 """
 
 SOURCE = """
@@ -130,20 +161,87 @@ roaring_bitmap_t *roaring_bitmap_and_many(size_t number, const roaring_bitmap_t 
     }
     return answer;
 }
-bool iterator_has_value(const roaring_uint32_iterator_t *it){
-    return it->has_value;
+
+bool croaring_get_elt(const roaring_bitmap_t *ra, int64_t index, uint32_t *ans){
+    uint32_t position = llabs(index);
+    if(index == 0){
+        *ans = roaring_bitmap_minimum(ra);
+        return true;
+    }
+    else if(index == -1){
+        *ans =  roaring_bitmap_maximum(ra);
+        return true;
+    }
+    else if(index < 0){
+        position = roaring_bitmap_get_cardinality(ra) + index;
+    }
+    if(roaring_bitmap_select(ra, position , ans))
+         return true;
+    return false;
 }
-uint32_t iterator_current_value(const roaring_uint32_iterator_t *it){
-    return it->current_value;
+
+roaring_bitmap_t *croaring_union(const roaring_bitmap_t **x, size_t size , bool using_heap) {
+    if (size == 0) {
+        return roaring_bitmap_create();
+    }
+    if (size == 1) {
+        return roaring_bitmap_copy(x[0]);
+    }
+
+    if (size == 2) {
+        return roaring_bitmap_or(x[0], x[1]);
+    }
+
+    if(using_heap)
+        return roaring_bitmap_or_many_heap(size, x);
+    return roaring_bitmap_or_many(size, x);
+}
+
+roaring_bitmap_t *croaring_intersection(const roaring_bitmap_t **x, size_t size) {
+    if (size == 0) {
+        return roaring_bitmap_create();
+    }
+
+    if (size == 1) {
+        return roaring_bitmap_copy(x[0]);
+    }
+
+    if (size == 2) {
+        return roaring_bitmap_and(x[0], x[1]);
+    }
+
+    return roaring_bitmap_and_many(size, x);
+}
+
+roaring_bitmap_t *croaring_get_slice(const roaring_bitmap_t* x, int sign , int64_t start, int64_t stop, int step){
+    if((sign > 0 && start >= stop) || (sign < 0 && start <= stop))
+        return roaring_bitmap_create();
+    uint32_t first_elt;
+    uint32_t last_elt;
+    roaring_bitmap_t * _croaring = NULL;
+    if( abs(step) == 1){
+        if(sign > 0){
+            if( (!croaring_get_elt( x, start , &first_elt)) || (!croaring_get_elt( x, stop - sign , &last_elt)) )
+                return roaring_bitmap_create();
+        }else{
+            if( (!croaring_get_elt( x, stop - sign , &first_elt)) || (!croaring_get_elt( x, start, &last_elt)) )
+                return roaring_bitmap_create();
+        }
+        _croaring = roaring_bitmap_from_range(first_elt, last_elt + 1, abs(step));
+        roaring_bitmap_and_inplace(_croaring, x);
+        _croaring->copy_on_write = x->copy_on_write;
+        return _croaring;
+    }else{
+        return NULL;
+    }
 }
 """
-
 ffi.cdef(CDEF)
 ffi.verifier = Verifier(ffi,
                         SOURCE ,
                         include_dirs=[include_dir],
                         modulename=_create_modulename(CDEF, SOURCE, sys.version),
-                        extra_compile_args=['-march=native','-std=c99','-O3'])
+                        extra_compile_args=['-std=c99','-O3','-msse4.2'])
 
 ffi.verifier.compile_module = _compile_module
 ffi.verifier._compile_module = _compile_module
@@ -158,7 +256,7 @@ class BitSet(collections.Set):
             return
         elif values is None:
             self._croaring = lib.roaring_bitmap_create()
-        elif isinstance(values, BitSet):
+        elif isinstance(values, self.__class__):
             self._croaring = lib.roaring_bitmap_copy(values._croaring)
         elif PY3 and isinstance(values, range):
             _, (start, stop, step) = values.__reduce__()
@@ -175,15 +273,15 @@ class BitSet(collections.Set):
         else:
             self._croaring = lib.roaring_bitmap_create()
             self.update(values)
-        if not isinstance(values, BitSet):
+        if not isinstance(values, self.__class__):
             self._croaring.copy_on_write = copy_on_write
 
     def update(self, *all_values):
         for values in all_values:
-            if isinstance(values, BitSet):
+            if isinstance(values, self.__class__):
                 self |= values
             elif PY3 and isinstance(values, range):
-                self |= BitSet(values, copy_on_write=self.copy_on_write)
+                self |= self.__class__(values, copy_on_write=self.copy_on_write)
             elif isinstance(values, array.array):
                 buffer = ffi.cast("uint32_t*", ffi.from_buffer(values))
                 lib.roaring_bitmap_add_many(self._croaring, len(values), buffer)
@@ -192,10 +290,10 @@ class BitSet(collections.Set):
 
     def intersection_update(self, *all_values):
         for values in all_values:
-            if isinstance(values, BitSet):
+            if isinstance(values, self.__class__):
                 self &= values
             else:
-                self &= BitMap(values, copy_on_write=self.copy_on_write)
+                self &= self.__class__(values, copy_on_write=self.copy_on_write)
     @property
     def copy_on_write(self):
         return self._croaring.copy_on_write
@@ -211,20 +309,20 @@ class BitSet(collections.Set):
         return not bool(lib.roaring_bitmap_is_empty(self._croaring))
 
     def __contains__(self, value):
-        if isinstance(value, BitSet):
-            return bool(lib.roaring_bitmap_is_subset(value._croaring, self._croaring))
         return bool(lib.roaring_bitmap_contains(self._croaring, ffi.cast("uint32_t", value)))
 
     def __iter__(self):
-        iter = lib.roaring_create_iterator(self._croaring)
-        while lib.iterator_has_value(iter):
-           yield lib.iterator_current_value(iter)
-           lib.roaring_advance_uint32_iterator(iter)
-        lib.roaring_free_uint32_iterator(iter)
+        item_iter = lib.roaring_create_iterator(self._croaring)
+        try:
+            while item_iter.has_value:
+                yield item_iter.current_value
+                lib.roaring_advance_uint32_iterator(item_iter)
+        finally:
+            lib.roaring_free_uint32_iterator(item_iter)
 
     def __and__(self, other):
         _croaring =  lib.roaring_bitmap_and(self._croaring,  other._croaring)
-        return BitSet(croaring = _croaring)
+        return self.__class__(croaring = _croaring)
 
     def __iand__(self, other):
         lib.roaring_bitmap_and_inplace(self._croaring,  other._croaring)
@@ -232,7 +330,7 @@ class BitSet(collections.Set):
 
     def __or__(self, other):
         _croaring =  lib.roaring_bitmap_or(self._croaring,  other._croaring)
-        return BitSet(croaring = _croaring)
+        return self.__class__(croaring = _croaring)
 
     def __ior__(self, other):
         lib.roaring_bitmap_or_inplace(self._croaring,  other._croaring)
@@ -240,7 +338,7 @@ class BitSet(collections.Set):
 
     def __xor__(self, other):
         _croaring =  lib.roaring_bitmap_xor(self._croaring,  other._croaring)
-        return BitSet(croaring = _croaring)
+        return self.__class__(croaring = _croaring)
 
     def __ixor__(self, other):
         lib.roaring_bitmap_xor_inplace(self._croaring,  other._croaring)
@@ -248,7 +346,7 @@ class BitSet(collections.Set):
 
     def __sub__(self, other):
         _croaring =  lib.roaring_bitmap_andnot(self._croaring,  other._croaring)
-        return BitSet(croaring = _croaring)
+        return self.__class__(croaring = _croaring)
 
     def __isub__(self, other):
         lib.roaring_bitmap_andnot_inplace(self._croaring,  other._croaring)
@@ -266,39 +364,20 @@ class BitSet(collections.Set):
             del self._croaring
 
     def _get_elt(self, index):
-        if not self:
-            raise IndexError("BitSet index out of range")
-        elif index == 0:
-            return self.minimum()
-        elif index == -1:
-            return self.maximum()
-        elif index < 0:
-            if abs(index) <= len(self):
-                return self[len(self) + index]
-            raise IndexError("BitSet index out of range")
-
-        elem = ffi.new('uint32_t *')
-        found = lib.roaring_bitmap_select(self._croaring, index, elem)
-        out = ffi.new('uint32_t *')
-        if lib.roaring_bitmap_select(self._croaring, ffi.cast("uint32_t", index), out):
+        out = ffi.new('uint32_t[1]')
+        if lib.croaring_get_elt(self._croaring, index, out):
             return out[0]
         else:
-            raise IndexError("BitSet index out of range")
+            raise IndexError('Index not found %s' % (index))
 
     def _get_slice(self, sl):
         start, stop, step = sl.indices(len(self))
         sign = 1 if step > 0 else -1
-        if (sign > 0 and start >= stop) or (sign < 0 and start <= stop):
-            return self.__class__()
-        if abs(step) == 1:
-            first_elt = self._get_elt(start)
-            last_elt  = self._get_elt(stop-sign)
-            values = range(first_elt, last_elt+sign, step)
-            result = self.__class__(values, copy_on_write=self.copy_on_write)
-            result &= self
-            return result
+        _croaring = lib.croaring_get_slice(self._croaring, sign , start, stop, step)
+        if _croaring == ffi.NULL:
+            return self.__class__([elm for elm in self][sl])
         else:
-            return self.__class__(list(self)[sl])
+            return self.__class__(croaring = _croaring)
 
     def __getitem__(self, index):
         if isinstance(index, int):
@@ -345,16 +424,13 @@ class BitSet(collections.Set):
         return self.copy()
 
     def copy(self):
-        _croaring =  lib.roaring_bitmap_copy(self._croaring)
-        return BitSet(croaring = _croaring)
+        return self.__class__(croaring = lib.roaring_bitmap_copy(self._croaring))
 
     def flip(self, start, end):
-        _croaring = lib.roaring_bitmap_flip(self._croaring, ffi.cast("uint64_t",start), ffi.cast("uint64_t", end))
-        return BitSet(croaring = _croaring)
+        return self.__class__(croaring = lib.roaring_bitmap_flip(self._croaring, ffi.cast("uint64_t",start), ffi.cast("uint64_t", end)))
 
     def flip_inplace(self, start, end):
         lib.roaring_bitmap_flip(self._croaring, ffi.cast("uint64_t",start), ffi.cast("uint64_t", end))
-        return self
 
     def __getstate__(self):
         return self.dumps()
@@ -365,34 +441,15 @@ class BitSet(collections.Set):
 
     @classmethod
     def union(cls, *bitsets):
-        if size <= 1:
-            return cls(*bitsets)
-        elif size == 2:
-            return bitsets[0] | bitsets[1]
-        else:
-            _croaring = lib.roaring_bitmap_or_many(len(bitsets), [b._croaring for b in bitsets])
-            return cls(croaring = _croaring)
+        return cls(croaring = lib.croaring_union([b._croaring for b in bitsets] , len(bitsets) , 0))
 
     @classmethod
     def union_heap(cls, *bitsets):
-        if size <= 1:
-            return cls(*bitsets)
-        elif size == 2:
-            return bitsets[0] | bitsets[1]
-        else:
-            _croaring = lib.roaring_bitmap_or_many_heap(len(bitsets), [b._croaring for b in bitsets])
-            return cls(croaring = _croaring)
+        return cls(croaring = lib.croaring_union([b._croaring for b in bitsets] , len(bitsets) , 1))
 
     @classmethod
     def intersection(cls, *bitsets):
-        size = len(bitsets)
-        if size <= 1:
-            return cls(*bitsets)
-        elif size == 2:
-            return bitsets[0] | bitsets[1]
-        else:
-            _croaring = lib.roaring_bitmap_and_many(len(bitsets), [b._croaring for b in bitsets])
-            return cls(croaring = _croaring)
+        return cls(croaring = lib.croaring_intersection([b._croaring for b in bitsets] , len(bitsets)))
 
     @classmethod
     def jaccard_index(cls, bitseta, bitsetb):
@@ -422,10 +479,7 @@ class BitSet(collections.Set):
         return result
 
     def remove(self, value):
-        if value in self:
-            lib.roaring_bitmap_remove(self._croaring, ffi.cast("uint32_t", value))
-        else:
-            raise KeyError(value)
+        lib.roaring_bitmap_remove(self._croaring, ffi.cast("uint32_t", value))
 
     def dumps(self):
         buf_size = lib.roaring_bitmap_size_in_bytes(self._croaring)
@@ -480,6 +534,11 @@ class BitSet(collections.Set):
         lib.roaring_bitmap_to_uint32_array(self._croaring, out)
         ar = array.array('I', out)
         return ar
+
+    def get_statistics(self):
+        out = ffi.new('roaring_statistics_t[%d]' % (1))
+        lib.roaring_bitmap_statistics(self._croaring, out)
+        return out[0]
 
 def load_from_file(file_name):
     result = None
