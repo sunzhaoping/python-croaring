@@ -37,20 +37,6 @@ def _compile_module(*args, **kwargs):
                        "Attempted implicit compile of a cffi module. All cffi modules should be pre-compiled at installation time."
                        )
 
-class LazyLibrary(object):
-    def __init__(self, ffi):
-        self._ffi = ffi
-        self._lib = None
-        self._lock = threading.Lock()
-
-    def __getattr__(self, name):
-        if self._lib is None:
-            with self._lock:
-                if self._lib is None:
-                    self._lib = self._ffi.verifier.load_library()
-
-        return getattr(self._lib, name)
-
 CDEF="""
 typedef struct roaring_array_s {
     int32_t size;
@@ -248,7 +234,7 @@ ffi.verifier = Verifier(ffi,
 ffi.verifier.compile_module = _compile_module
 ffi.verifier._compile_module = _compile_module
 
-lib = LazyLibrary(ffi)
+lib = ffi.verifier.load_library()
 
 class BitSet(collections.Set):
     def __init__(self, values=None, copy_on_write=False, croaring = None):
