@@ -305,8 +305,12 @@ class BitSet(collections.Set):
         values = ', '.join([str(n) for n in self])
         return 'BitSet([%s])' % values
 
-    def __bool__(self):
+    def __nonzero__(self):
         return not bool(lib.roaring_bitmap_is_empty(self._croaring))
+
+    if PY3:
+        __bool__ = __nonzero__
+        del __nonzero__
 
     def __contains__(self, value):
         return bool(lib.roaring_bitmap_contains(self._croaring, ffi.cast("uint32_t", value)))
@@ -525,7 +529,7 @@ class BitSet(collections.Set):
     def intersect(self, ohter):
         return bool(lib.roaring_bitmap_intersect(self._croaring, other._croaring))
 
-    def index(self, value):
+    def rank(self, value):
         return lib.roaring_bitmap_rank(self._croaring, ffi.cast("uint32_t", value))
 
     def to_array(self):
