@@ -11,8 +11,10 @@ from cffi import FFI
 from cffi.verifier import Verifier
 
 PY3 = sys.version_info >= (3,)
-if PY3:
+try:
     xrange = range
+except:
+    pass
 
 include_dir = os.path.split(os.path.realpath(__file__))[0]
 ffi = FFI()
