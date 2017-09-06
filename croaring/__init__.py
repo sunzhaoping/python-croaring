@@ -30,11 +30,6 @@ def _create_modulename(cdef_sources, source, sys_version):
     k2 = k2.lstrip('0').rstrip('L')
     return '_Croaring_cffi_{0}{1}'.format(k1, k2)
 
-def _compile_module(*args, **kwargs):
-    raise RuntimeError(
-                       "Attempted implicit compile of a cffi module. All cffi modules should be pre-compiled at installation time."
-                       )
-
 CDEF="""
 typedef struct roaring_array_s {
     int32_t size;
@@ -228,9 +223,6 @@ ffi.verifier = Verifier(ffi,
                         include_dirs=[include_dir],
                         modulename=_create_modulename(CDEF, SOURCE, sys.version),
                         extra_compile_args=['-std=c99','-O3','-msse4.2'])
-
-ffi.verifier.compile_module = _compile_module
-ffi.verifier._compile_module = _compile_module
 
 lib = ffi.verifier.load_library()
 
