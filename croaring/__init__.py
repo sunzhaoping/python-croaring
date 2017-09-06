@@ -3,8 +3,6 @@ from __future__ import absolute_import, division, print_function, with_statement
 import sys
 import os
 import binascii
-import threading
-import collections
 import array
 
 from cffi import FFI
@@ -236,7 +234,7 @@ ffi.verifier._compile_module = _compile_module
 
 lib = ffi.verifier.load_library()
 
-class BitSet(collections.Set):
+class BitSet(object):
     def __init__(self, values=None, copy_on_write=False, croaring = None):
         if croaring:
             assert values is None and not copy_on_write
@@ -256,8 +254,9 @@ class BitSet(collections.Set):
             else:
                 self._croaring = lib.roaring_bitmap_from_range(start, stop, step)
         elif isinstance(values, array.array):
-            buffer = ffi.cast("uint32_t*", ffi.from_buffer(values))
-            self._croaring = lib.roaring_bitmap_of_ptr(len(values), buffer)
+            address, size = values.buffer_info()
+            buffer = ffi.cast("uint32_t*", address)
+            self._croaring = lib.roaring_bitmap_of_ptr(size, buffer)
         else:
             self._croaring = lib.roaring_bitmap_create()
             self.update(values)
