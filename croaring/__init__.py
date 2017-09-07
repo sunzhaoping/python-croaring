@@ -124,6 +124,7 @@ void roaring_bitmap_statistics(const roaring_bitmap_t *ra, roaring_statistics_t 
 roaring_bitmap_t *roaring_bitmap_and_many(size_t number, const roaring_bitmap_t **x);
 bool croaring_get_elt(const roaring_bitmap_t *ra, int64_t index, uint32_t *ans);
 roaring_bitmap_t *croaring_union(const roaring_bitmap_t **x, size_t size , bool using_heap);
+roaring_bitmap_t *croaring_intersection(const roaring_bitmap_t **x, size_t size);
 roaring_bitmap_t *croaring_get_slice(const roaring_bitmap_t*x, int sign , int64_t start, int64_t stop, int step);
 """
 
