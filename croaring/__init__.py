@@ -293,7 +293,7 @@ class BitSet(object):
         del __nonzero__
 
     def __contains__(self, value):
-        return bool(lib.roaring_bitmap_contains(self._croaring, ffi.cast("uint32_t", value)))
+        return bool(lib.roaring_bitmap_contains(self._croaring, value))
 
     def __iter__(self):
         item_iter = lib.roaring_create_iterator(self._croaring)
@@ -452,10 +452,10 @@ class BitSet(object):
         return lib.roaring_bitmap_xor_cardinality(self._croaring, other._croaring)
 
     def add(self, value):
-        lib.roaring_bitmap_add(self._croaring, ffi.cast("uint32_t", value))
+        lib.roaring_bitmap_add(self._croaring, value)
 
     def discard(self, value):
-        lib.roaring_bitmap_remove(self._croaring, ffi.cast("uint32_t", value))
+        lib.roaring_bitmap_remove(self._croaring, value)
 
     def pop(self, maxvalue = False):
         result = self.maximum() if maxvalue else self.minimum()
@@ -463,7 +463,7 @@ class BitSet(object):
         return result
 
     def remove(self, value):
-        lib.roaring_bitmap_remove(self._croaring, ffi.cast("uint32_t", value))
+        lib.roaring_bitmap_remove(self._croaring, value)
 
     def dumps(self):
         buf_size = lib.roaring_bitmap_size_in_bytes(self._croaring)
@@ -510,7 +510,7 @@ class BitSet(object):
         return bool(lib.roaring_bitmap_intersect(self._croaring, other._croaring))
 
     def rank(self, value):
-        return lib.roaring_bitmap_rank(self._croaring, ffi.cast("uint32_t", value))
+        return lib.roaring_bitmap_rank(self._croaring, value)
 
     def to_array(self):
         size = len(self)
